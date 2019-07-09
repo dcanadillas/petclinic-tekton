@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: petclinic-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/dcanadillas/petclinic-kaniko.git
+    # - name: revision
+    #   value: master
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: petclinic-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: eu.gcr.io/emea-sa-demo/petclinic-kaniko:latest
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: petclinic-deploy
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/dcanadillas/petclinic-kaniko-deploy.git
