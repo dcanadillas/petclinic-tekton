@@ -1,0 +1,171 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-maven
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+    params:
+      - name: workingDir
+        description: Working directory parameter
+        default: /workspace/workspace
+  outputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: maven-build
+      image: gcr.io/cloud-builders/mvn:3.5.0-jdk-8
+      workingDir: ${inputs.params.workingDir}
+      command: ["mvn"]
+      args:
+        # - "clean"
+        - "install"
+    - name: ls-target
+      image: ubuntu
+      command:
+        - "ls"
+      args:
+        - "-la"
+        - "/workspace/workspace/target"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-kaniko
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+        targetPath: petclinic
+    params:
+      - name: workingDir
+        description: Working directory parameter
+        default: /workspace/petclinic
+      - name: DockerFilePath
+        decription: Path to DockerFile
+        default: /workspace/petclinic/Dockerfile
+  outputs:
+    resources:
+      - name: dockerImage
+        type: image
+  steps:
+    - name: kaniko-build
+      image: gcr.io/kaniko-project/executor:latest
+      command:
+        - /kaniko/executor
+      args:
+        - "--dockerfile=${inputs.params.DockerFilePath}"
+        - "--context=${inputs.params.workingDir}"
+        - "--destination=${outputs.resources.dockerImage.url}"
+      env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /secret/kaniko-secret.json
+      volumeMounts:
+        - name: kaniko-secret
+          mountPath: /secret
+  volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: emea-sa-secret
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: deploy-kubectl
+spec:
+  inputs:
+    resources:
+      - name: workspacedeploy
+        type: git
+    params:
+      - name: workingDir
+        description: Working directory parameter
+        default: /workspace/workspacedeploy
+      - name: deployFile
+        description: Deployment file for app
+        default: test-deploy.yaml
+        # Just a parameter to check the depployment name, because one step will force redeploy
+      - name: deploymentName
+        description: The K8s deployment object name
+        default: petclinic
+  steps:
+    - name: kubectl-clean
+      image: gcr.io/cloud-builders/kubectl:latest
+      workingDir: ${inputs.params.workingDir}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - MYDEPLOY=$(kubectl get deployments -l app=petclinic -o name | awk -F'/' '{print $2}');
+        - if [ "$MYDEPLOY" = "${inputs.params.deploymentName}" ];
+        - then kubectl delete deployment $MYDEPLOY;
+        - fi
+    - name: kubectl-deploy
+      image: gcr.io/cloud-builders/kubectl:latest
+      workingDir: ${inputs.params.workingDir}
+      command: ["kubectl"]
+      args:
+        - apply
+        - -f 
+        - ${inputs.params.deployFile}
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: petclinic-pipeline
+spec:
+  resources:
+    - name: source-repo
+      type: git
+    - name: docker-container
+      type: image
+    - name: deploy-repo
+      type: git
+  # params:
+  #   - name: pathToContext
+  #     description: Path of context build
+  #     default: src
+  tasks:
+    - name: petclinic-maven
+      taskRef:
+        name: build-maven
+      # params:
+      #   - name: pathToContext
+      #     value: "${params.pathToContext}"
+      resources:
+        inputs:
+          - name: workspace
+            resource: source-repo
+        outputs:
+          - name: workspace
+            resource: source-repo
+    - name: petclinic-kaniko
+      taskRef:
+        name: build-kaniko
+      # params:
+      #   - name: pathToContext
+      #     value: "${params.pathToContext}"
+      resources:
+        inputs:
+          - name: workspace
+            resource: source-repo
+            from: 
+              - petclinic-maven
+        outputs:
+          - name: dockerImage
+            resource: docker-container
+    - name: petclinic-deploy
+      taskRef:
+        name: deploy-kubectl
+      runAfter:
+        - petclinic-kaniko
+      resources:
+        inputs:
+          - name: workspacedeploy
+            resource: deploy-repo
+      params:
+        - name: deployFile
+          value: test-deploy-secret.yaml

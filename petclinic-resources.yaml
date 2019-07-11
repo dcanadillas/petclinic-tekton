@@ -1,5 +1,5 @@
 apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
+kind: PipelineResources
 metadata:
   name: petclinic-git
 spec:
@@ -11,7 +11,7 @@ spec:
     #   value: master
 ---
 apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
+kind: PipelineResources
 metadata:
   name: petclinic-image
 spec:
@@ -21,7 +21,7 @@ spec:
       value: eu.gcr.io/emea-sa-demo/petclinic-kaniko:latest
 ---
 apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
+kind: PipelineResources
 metadata:
   name: petclinic-deploy
 spec:
