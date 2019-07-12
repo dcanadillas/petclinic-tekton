@@ -6,6 +6,9 @@ spec:
   pipelineRef:
     name: petclinic-pipeline
   serviceAccount: 'default'
+  serviceAccounts:
+    - taskName: petclinic-deploy
+      serviceAccount: tekton-deployment
   resources:
   - name: source-repo
     resourceRef:

@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: petclinic-deploy-taskrun
+spec:
+  taskRef:
+    name: deploy-kubectl
+  serviceAccount: tekton-deployment
+  inputs:
+    resources:
+      - name: workspacedeploy
+        resourceRef:
+          name: petclinic-deploy
+    params:
+      - name: deployFile
+        value: test-deploy-secret.yaml
+      

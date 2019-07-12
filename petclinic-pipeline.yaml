@@ -21,7 +21,7 @@ spec:
       workingDir: ${inputs.params.workingDir}
       command: ["mvn"]
       args:
-        # - "clean"
+        - "clean"
         - "install"
     - name: ls-target
       image: ubuntu
