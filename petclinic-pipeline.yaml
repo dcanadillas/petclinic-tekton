@@ -70,7 +70,7 @@ spec:
   volumes:
     - name: kaniko-secret
       secret:
-        secretName: emea-sa-secret
+        secretName: kaniko-secret-cfg
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Task

@@ -5,7 +5,8 @@ metadata:
 spec:
   pipelineRef:
     name: petclinic-pipeline
-  serviceAccount: 'default'
+  serviceAccount: default
+  # Specifying different serviceAccounts requires Tekton v0.5.0+
   serviceAccounts:
     - taskName: petclinic-deploy
       serviceAccount: tekton-deployment
